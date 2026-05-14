@@ -3,6 +3,7 @@
 
 #include "color.h"
 #include "hittable.h"
+#include "material.h"    
 #include "rtweekend.h"
 
 #include <iostream>
@@ -87,18 +88,20 @@ class camera {
         // Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
         return vec3(random_double() - 0.5, random_double() - 0.5, 0);
     }
-    color ray_color(const ray& r, int depth, const hittable& world) const {
-        
-        if (depth <= 0)
+color ray_color(const ray& r, int depth, const hittable& world) const {
+    if (depth <= 0)
         return color(0,0,0);
-        
-        hit_record rec;
-        
-        if (world.hit(r, 0.001, infinity, rec)) {
-            vec3 direction = rec.normal + random_unit_vector();
-            return 0.5 * ray_color(ray(rec.p, direction), depth-1, world);
+
+    hit_record rec;
+
+    if (world.hit(r, 0.001, infinity, rec)) {
+        ray scattered;
+        color attenuation;
+        if (rec.mat->scatter(r, rec, attenuation, scattered))
+            return attenuation * ray_color(scattered, depth-1, world);
+        return color(0,0,0);
     }
-    
+
     vec3 unit_direction = unit_vector(r.direction());
     auto a = 0.5*(unit_direction.y() + 1.0);
     return (1.0-a)*color(1.0, 1.0, 1.0) + a*color(0.5, 0.7, 1.0);
