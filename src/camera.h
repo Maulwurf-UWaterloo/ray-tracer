@@ -99,6 +99,12 @@ class camera {
         // Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
         return vec3(random_double() - 0.5, random_double() - 0.5, 0);
     }
+
+   point3 defocus_disk_sample() const {      
+        auto p = random_in_unit_disk();
+        return center + (p[0] * defocus_disk_u) + (p[1] * defocus_disk_v);
+    }
+
     color ray_color(const ray& r, int depth, const hittable& world) const {
         if (depth <= 0)
         return color(0,0,0);
@@ -111,11 +117,6 @@ class camera {
         if (rec.mat->scatter(r, rec, attenuation, scattered))
             return attenuation * ray_color(scattered, depth-1, world);
             return color(0,0,0);
-    }
-
-    point3 defocus_disk_sample() const {
-    auto p = random_in_unit_disk();
-    return center + (p[0] * defocus_disk_u) + (p[1] * defocus_disk_v);
     }
 
     vec3 unit_direction = unit_vector(r.direction());
