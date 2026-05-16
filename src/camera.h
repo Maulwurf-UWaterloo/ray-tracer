@@ -5,7 +5,8 @@
 #include "hittable.h"
 #include "material.h"    
 #include "rtweekend.h"
-
+#include "image_writer.h"
+#include <string>
 #include <iostream>
 #include <chrono>
 
@@ -22,29 +23,32 @@ class camera {
     double defocus_angle = 0;    
     double focus_dist    = 10;   
     
-    void render(const hittable& world) {
+    void render(const hittable& world, const std::string& output_filename = "output.png") {
     initialize();
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+    image_writer img(image_width, image_height);
 
     for (int j = 0; j < image_height; j++) {
         std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
         for (int i = 0; i < image_width; i++) {
-            color pixel_color(0,0,0);
+            color pixel_color(0, 0, 0);
             for (int sample = 0; sample < samples_per_pixel; sample++) {
                 ray r = get_ray(i, j);
                 pixel_color += ray_color(r, max_depth, world);
             }
-            write_color(std::cout, pixel_samples_scale * pixel_color);
+            img.write_pixel(i, j, pixel_color, pixel_samples_scale);
         }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-    std::clog << "\rDone in " << duration.count() << " seconds.\n";
-  }
+
+    img.save_png(output_filename);
+
+    std::clog << "\rDone in " << duration.count() << " seconds. Saved to " << output_filename << "\n";
+    }
 
   private:
     int    image_height;
@@ -116,7 +120,7 @@ class camera {
         
         hit_record rec;
         
-        if (world.hit(r, 0.001, infinity, rec)) {
+        if (world.hit(r, interval(0.001, infinity), rec)) {
             ray scattered;
             color attenuation;
         if (rec.mat->scatter(r, rec, attenuation, scattered))
