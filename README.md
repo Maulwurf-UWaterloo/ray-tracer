@@ -2,7 +2,7 @@
 
 A path-traced ray tracer in C++17, built from scratch following the *Ray Tracing in One Weekend* series.
 
-![Cover render](images/final_render.png)
+![Cover render](images/signature_W.png)
 
 ## Features
 
