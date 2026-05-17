@@ -13,7 +13,7 @@ A path-traced ray tracer in C++17, built from scratch following the *Ray Tracing
 - [x] Positionable camera with vertical FOV
 - [x] Defocus blur (depth of field)
 - [x] PNG output via stb_image_write
-- [ ] BVH acceleration structure (in progress)
+- [x] BVH acceleration structure (median-split, longest-axis)
 - [ ] Multi-threaded rendering (in progress)
 
 ## Build
@@ -36,23 +36,28 @@ Header-only components in `src/`:
 |------|----------------|
 | `vec3.h` | 3D vector math with operator overloads |
 | `ray.h` | Parameterized ray (origin + direction) |
+| `interval.h` | 1D interval utility for ray-bounds tests |
+| `aabb.h` | Axis-Aligned Bounding Box with slab-method intersection |
 | `hittable.h` | Abstract base for intersectable objects |
 | `sphere.h` | Sphere primitive with quadratic intersection |
 | `hittable_list.h` | Composite of multiple hittables |
+| `bvh.h` | Bounding Volume Hierarchy for O(log n) traversal |
 | `material.h` | Lambertian, Metal, Dielectric materials |
 | `camera.h` | Positionable camera with defocus blur and timing instrumentation |
 | `image_writer.h` | PNG output with gamma correction |
 
 ## Performance
 
-Baseline (no optimizations yet):
+Benchmark scene: 488 randomly placed spheres (RTIOW final scene), 400×225, 100 samples/pixel, max depth 50.
+Hardware: 1.4 GHz Quad-Core Intel Core i5 (2020 MacBook Pro 13").
 
-| Configuration | Hardware | Render Time |
-|--------------|----------|-------------|
-| 400×225, 100 spp, max depth 50, ~500 spheres | 1.4 GHz Quad-Core Intel i5 | 495s |
-
-Target after BVH + multi-threading: **< 30 seconds**.
+| Configuration | Render Time | Speedup |
+|---------------|-------------|---------|
+| Single-threaded, no BVH (Release) | 60 s | 1.0× (baseline) |
+| Single-threaded, with BVH | 14 s | **4.3×** |
+| Multi-threaded, with BVH | TBD | TBD |
 
 ## References
 
 - *[Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html)* by Peter Shirley
+- *[Ray Tracing: The Next Week](https://raytracing.github.io/books/RayTracingTheNextWeek.html)* by Peter Shirley (BVH chapter)
