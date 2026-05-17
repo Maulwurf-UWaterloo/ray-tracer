@@ -1,74 +1,82 @@
+#include "bvh.h"
 #include "camera.h"
 #include "color.h"
 #include "hittable_list.h"
 #include "material.h"
 #include "rtweekend.h"
 #include "sphere.h"
-#include "bvh.h"
 
+
+void add_sphere_line(hittable_list& world,
+                     const point3& start,
+                     const point3& end,
+                     double radius,
+                     int count,
+                     shared_ptr<material> mat) {
+    for (int i = 0; i < count; i++) {
+        double t = double(i) / (count - 1);
+        point3 pos = start + t * (end - start);
+        world.add(make_shared<sphere>(pos, radius, mat));
+    }
+}
 
 int main() {
     hittable_list world;
 
 
-    auto ground_material = make_shared<lambertian>(color(0.5, 0.5, 0.5));
-    world.add(make_shared<sphere>(point3(0,-1000,0), 1000, ground_material));
+    auto ground = make_shared<lambertian>(color(0.85, 0.85, 0.85));
+    world.add(make_shared<sphere>(point3(0, -1000, 0), 1000, ground));
 
 
-    for (int a = -11; a < 11; a++) {
-        for (int b = -11; b < 11; b++) {
-            auto choose_mat = random_double();
-            point3 center(a + 0.9*random_double(), 0.2, b + 0.9*random_double());
+    auto w_material = make_shared<metal>(color(1.0, 0.84, 0.2), 0.0);
 
-            if ((center - point3(4, 0.2, 0)).length() > 0.9) {
-                shared_ptr<material> sphere_material;
+    double y_top = 2.5;
+    double y_bot = 0.4;
+    double x_far = 3.0;
+    double x_mid = 1.2;
+    double y_peak = 1.6;
+    double sphere_r = 0.3;
+    int per_segment = 12;
 
-                if (choose_mat < 0.8) {
-                    // Diffuse
-                    auto albedo = color::random() * color::random();
-                    sphere_material = make_shared<lambertian>(albedo);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                } else if (choose_mat < 0.95) {
-                    // Metal
-                    auto albedo = color::random(0.5, 1);
-                    auto fuzz = random_double(0, 0.5);
-                    sphere_material = make_shared<metal>(albedo, fuzz);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                } else {
-                    // Glass
-                    sphere_material = make_shared<dielectric>(1.5);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                }
-            }
-        }
+    add_sphere_line(world, point3(-x_far, y_top, 0), point3(-x_mid, y_bot, 0),
+                    sphere_r, per_segment, w_material);
+    add_sphere_line(world, point3(-x_mid, y_bot, 0), point3(0, y_peak, 0),
+                    sphere_r, per_segment, w_material);
+    add_sphere_line(world, point3(0, y_peak, 0), point3(x_mid, y_bot, 0),
+                    sphere_r, per_segment, w_material);
+    add_sphere_line(world, point3(x_mid, y_bot, 0), point3(x_far, y_top, 0),
+                    sphere_r, per_segment, w_material);
+
+
+    for (int i = 0; i < 40; i++) {
+        double bx = random_double(-7, 7);
+        double bz = random_double(-6, -2);
+        double by = 0.15 + random_double(0, 0.1);
+        auto albedo = color::random() * color::random();
+        auto mat = make_shared<lambertian>(albedo);
+        world.add(make_shared<sphere>(point3(bx, by, bz), 0.15, mat));
     }
 
 
-    auto material1 = make_shared<dielectric>(1.5);
-    world.add(make_shared<sphere>(point3(0, 1, 0), 1.0, material1));
+    auto glass = make_shared<dielectric>(1.5);
+    world.add(make_shared<sphere>(point3(0, 0.6, 3), 0.6, glass));
 
-    auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
-    world.add(make_shared<sphere>(point3(-4, 1, 0), 1.0, material2));
+    world = hittable_list(make_shared<bvh_node>(world));
 
-    auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
-    world.add(make_shared<sphere>(point3(4, 1, 0), 1.0, material3));
 
-    // world = hittable_list(make_shared<bvh_node>(world));
-
-    // Camera
     camera cam;
     cam.aspect_ratio      = 16.0 / 9.0;
-    cam.image_width       = 400;
+    cam.image_width       = 800;
     cam.samples_per_pixel = 100;
     cam.max_depth         = 50;
 
-    cam.vfov     = 20;
-    cam.lookfrom = point3(13, 2, 3);
-    cam.lookat   = point3(0, 0, 0);
+    cam.vfov     = 30;
+    cam.lookfrom = point3(0, 2, 9);
+    cam.lookat   = point3(0, 1.4, 0);
     cam.vup      = vec3(0, 1, 0);
 
-    cam.defocus_angle = 0.6;
-    cam.focus_dist    = 10.0;
+    cam.defocus_angle = 0.2;
+    cam.focus_dist    = 9.0;
 
-    cam.render(world, "images/final_render.png");
+    cam.render(world, "images/signature_W.png");
 }
