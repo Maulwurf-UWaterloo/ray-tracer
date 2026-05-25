@@ -9,6 +9,9 @@
 #include <string>
 #include <iostream>
 #include <chrono>
+#include <atomic>
+#include <thread>
+#include <vector>
 
 class camera {
   public:
@@ -23,23 +26,65 @@ class camera {
     double defocus_angle = 0;    
     double focus_dist    = 10;   
     
-    void render(const hittable& world, const std::string& output_filename = "output.png") {
+void render(const hittable& world, const std::string& output_filename = "output.png") {
     initialize();
 
     auto start = std::chrono::high_resolution_clock::now();
 
     image_writer img(image_width, image_height);
 
-    for (int j = 0; j < image_height; j++) {
-        std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
-        for (int i = 0; i < image_width; i++) {
-            color pixel_color(0, 0, 0);
-            for (int sample = 0; sample < samples_per_pixel; sample++) {
-                ray r = get_ray(i, j);
-                pixel_color += ray_color(r, max_depth, world);
+
+    unsigned int num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 4;
+
+
+    const int tile_size = 32;
+    const int tiles_x = (image_width + tile_size - 1) / tile_size;
+    const int tiles_y = (image_height + tile_size - 1) / tile_size;
+    const int total_tiles = tiles_x * tiles_y;
+
+
+    std::atomic<int> next_tile{0};
+
+    std::clog << "Rendering " << image_width << "x" << image_height 
+              << " with " << num_threads << " threads, " 
+              << total_tiles << " tiles...\n";
+
+    auto worker = [&]() {
+        while (true) {
+            int tile_idx = next_tile.fetch_add(1);
+            if (tile_idx >= total_tiles) break;
+
+            int tile_x = tile_idx % tiles_x;
+            int tile_y = tile_idx / tiles_x;
+
+            int x_start = tile_x * tile_size;
+            int y_start = tile_y * tile_size;
+            int x_end = std::min(x_start + tile_size, image_width);
+            int y_end = std::min(y_start + tile_size, image_height);
+
+            for (int j = y_start; j < y_end; j++) {
+                for (int i = x_start; i < x_end; i++) {
+                    color pixel_color(0, 0, 0);
+                    for (int sample = 0; sample < samples_per_pixel; sample++) {
+                        ray r = get_ray(i, j);
+                        pixel_color += ray_color(r, max_depth, world);
+                    }
+                    img.write_pixel(i, j, pixel_color, pixel_samples_scale);
+                }
             }
-            img.write_pixel(i, j, pixel_color, pixel_samples_scale);
         }
+    };
+
+
+    std::vector<std::thread> threads;
+    threads.reserve(num_threads);
+    for (unsigned int t = 0; t < num_threads; t++) {
+        threads.emplace_back(worker);
+    }
+
+    for (auto& t : threads) {
+        t.join();
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -47,8 +92,9 @@ class camera {
 
     img.save_png(output_filename);
 
-    std::clog << "\rDone in " << duration.count() << " seconds. Saved to " << output_filename << "\n";
-    }
+    std::clog << "Done in " << duration.count() << " seconds using " 
+              << num_threads << " threads. Saved to " << output_filename << "\n";
+  }
 
   private:
     int    image_height;

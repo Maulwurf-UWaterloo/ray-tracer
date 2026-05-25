@@ -6,7 +6,6 @@
 #include "rtweekend.h"
 #include "sphere.h"
 
-
 void add_sphere_line(hittable_list& world,
                      const point3& start,
                      const point3& end,
@@ -23,30 +22,19 @@ void add_sphere_line(hittable_list& world,
 int main() {
     hittable_list world;
 
-
     auto ground = make_shared<lambertian>(color(0.85, 0.85, 0.85));
     world.add(make_shared<sphere>(point3(0, -1000, 0), 1000, ground));
 
-
     auto w_material = make_shared<metal>(color(1.0, 0.84, 0.2), 0.0);
 
-    double y_top = 2.5;
-    double y_bot = 0.4;
-    double x_far = 3.0;
-    double x_mid = 1.2;
-    double y_peak = 1.6;
-    double sphere_r = 0.3;
+    double y_top = 2.5, y_bot = 0.4, x_far = 3.0;
+    double x_mid = 1.2, y_peak = 1.6, sphere_r = 0.3;
     int per_segment = 12;
 
-    add_sphere_line(world, point3(-x_far, y_top, 0), point3(-x_mid, y_bot, 0),
-                    sphere_r, per_segment, w_material);
-    add_sphere_line(world, point3(-x_mid, y_bot, 0), point3(0, y_peak, 0),
-                    sphere_r, per_segment, w_material);
-    add_sphere_line(world, point3(0, y_peak, 0), point3(x_mid, y_bot, 0),
-                    sphere_r, per_segment, w_material);
-    add_sphere_line(world, point3(x_mid, y_bot, 0), point3(x_far, y_top, 0),
-                    sphere_r, per_segment, w_material);
-
+    add_sphere_line(world, point3(-x_far, y_top, 0), point3(-x_mid, y_bot, 0), sphere_r, per_segment, w_material);
+    add_sphere_line(world, point3(-x_mid, y_bot, 0), point3(0, y_peak, 0),      sphere_r, per_segment, w_material);
+    add_sphere_line(world, point3(0, y_peak, 0),     point3(x_mid, y_bot, 0),   sphere_r, per_segment, w_material);
+    add_sphere_line(world, point3(x_mid, y_bot, 0),  point3(x_far, y_top, 0),   sphere_r, per_segment, w_material);
 
     for (int i = 0; i < 40; i++) {
         double bx = random_double(-7, 7);
@@ -57,12 +45,10 @@ int main() {
         world.add(make_shared<sphere>(point3(bx, by, bz), 0.15, mat));
     }
 
-
     auto glass = make_shared<dielectric>(1.5);
     world.add(make_shared<sphere>(point3(0, 0.6, 3), 0.6, glass));
 
     world = hittable_list(make_shared<bvh_node>(world));
-
 
     camera cam;
     cam.aspect_ratio      = 16.0 / 9.0;
